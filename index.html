@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Zodiac Competitions Marking Tool</title>
+  <!-- Include Bootstrap CSS via CDN -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Include Vue.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <style>
+    /* Additional custom styling */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .candidate-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .results-table th, .results-table td {
+      vertical-align: middle;
+    }
+    .modal-content {
+      white-space: pre-wrap;
+    }
+    .delete-btn {
+      cursor: pointer;
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="container">
+    <header class="my-4 text-center">
+      <h1>Zodiac Competitions Marking Tool</h1>
+      <button class="btn btn-info mt-2" @click="showRules">View Rules</button>
+    </header>
+
+    <!-- Candidate Input Section -->
+    <div class="candidate mb-4">
+      <h2>Add Candidates</h2>
+      <div class="form-inline">
+        <input v-model="newCandidate" @keyup.enter="addCandidate" class="form-control mr-2" placeholder="Enter candidate name" />
+        <button @click="addCandidate" class="btn btn-primary">Add Candidate</button>
+      </div>
+      <div class="candidate-list mt-3">
+        <ul class="list-group">
+          <li v-for="(candidate, index) in candidates" :key="index" class="list-group-item d-flex justify-content-between align-items-center">
+            {{ candidate.name }}
+            <span class="delete-btn" @click="deleteCandidate(index)">&times;</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Judges' Scores Input Section -->
+    <div class="judges mb-4" v-if="candidates.length">
+      <h2>Enter Judges' Scores</h2>
+      <div class="table-responsive">
+        <table class="table table-bordered">
+          <tr>
+            <th>Candidate</th>
+            <th v-for="(judge, index) in judges" :key="index">
+              Judge {{ index + 1 }}<span v-if="index === magicalJudgeIndex"> (Magical Judge)</span>
+            </th>
+          </tr>
+          <tr v-for="(candidate, cIndex) in candidates" :key="cIndex">
+            <td>{{ candidate.name }}</td>
+            <td v-for="(judge, jIndex) in judges" :key="jIndex">
+              <input type="number" class="form-control" v-model.number="candidate.scores[jIndex]" min="0" max="100" />
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Calculate and Display Results -->
+    <div class="results mb-4" v-if="candidates.length">
+      <button @click="calculateResults" class="btn btn-success">Calculate Results</button>
+      <button @click="resetAll" class="btn btn-danger ml-2">Reset All</button>
+      <div v-if="results.length" class="mt-4">
+        <h2>Results</h2>
+        <div class="table-responsive">
+          <table class="table table-bordered results-table">
+            <tr>
+              <th>Final Position</th>
+              <th>Candidate</th>
+              <th>Total Score</th>
+            </tr>
+            <tr v-for="(result, index) in results" :key="index">
+              <td>{{ result.position }}</td>
+              <td>{{ result.name }}</td>
+              <td>{{ result.totalScore.toFixed(2) }}</td>
+            </tr>
+          </table>
+        </div>
+        <h3 class="mt-3">Winner: {{ winner }}</h3>
+      </div>
+    </div>
+
+    <!-- Rules Modal -->
+    <div class="modal fade" id="rulesModal" tabindex="-1" role="dialog" aria-labelledby="rulesModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Competition Rules</h5>
+            <button type="button" class="close" @click="closeRules" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            {{ rules }}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="closeRules">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Include Bootstrap JS and dependencies via CDN -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <!-- Vue.js App Script -->
+  <script>
+    new Vue({
+      el: '#app',
+      data: {
+        newCandidate: '',
+        candidates: [],
+        judges: [1, 2, 3, 4, 5],
+        magicalJudgeIndex: 4, // Assuming the 5th judge is the magical judge
+        results: [],
+        winner: '',
+        rules: `The judges will be asked to award marks out of one hundred based on which act they found to be the most enjoyable magic act. Where possible, an independent Magical Judge will be appointed to judge solely on the magical content of the acts. To give their score more weighting, the magical judge’s score is duplicated as if they were two judges who both gave the same score; i.e. there are four non-magician judges and (effectively) two magical judges’ scores. These marks will decide positional order of competitors and the winner will be the competitor with the lowest positional score.
+
+Positional marks follow sequence 1st = 1, 2nd = 2, etc. For equal marks the positional marks occupied are added together and divided equally, e.g. two equal firsts will each receive 1.5 points (1st and 2nd added together = 3, and this is divided by 2). The next competitor will receive three points for 3rd place. For three equal 3rd’s, each competitor would receive four points (3, 4 and 5 added together = 12, divided by three). The next competitor in order would receive six.
+
+The PIC is responsible for the marking but should have a member helping who is acquainted with the system to check the figures.`
+      },
+      methods: {
+        addCandidate() {
+          if (this.newCandidate.trim()) {
+            this.candidates.push({
+              name: this.newCandidate.trim(),
+              scores: Array(this.judges.length).fill(0)
+            });
+            this.newCandidate = '';
+            this.saveData();
+          }
+        },
+        deleteCandidate(index) {
+          this.candidates.splice(index, 1);
+          this.saveData();
+        },
+        resetAll() {
+          if (confirm('Are you sure you want to reset all data?')) {
+            this.candidates = [];
+            this.results = [];
+            this.winner = '';
+            localStorage.removeItem('candidates');
+          }
+        },
+        calculateResults() {
+          // Duplicate the magical judge's score
+          this.candidates.forEach(candidate => {
+            candidate.totalScore = 0;
+            for (let i = 0; i < this.judges.length; i++) {
+              let score = candidate.scores[i] || 0;
+              if (i === this.magicalJudgeIndex) {
+                candidate.totalScore += score * 2; // Duplicate score
+              } else {
+                candidate.totalScore += score;
+              }
+            }
+          });
+
+          // Sort candidates based on total scores in ascending order (lowest score first)
+          let sortedCandidates = [...this.candidates].sort((a, b) => a.totalScore - b.totalScore);
+
+          // Assign positions
+          let finalResults = [];
+          let position = 1;
+          let i = 0;
+          while (i < sortedCandidates.length) {
+            let tieGroup = [sortedCandidates[i]];
+            let j = i + 1;
+            while (j < sortedCandidates.length && sortedCandidates[j].totalScore === sortedCandidates[i].totalScore) {
+              tieGroup.push(sortedCandidates[j]);
+              j++;
+            }
+            let sumPositions = 0;
+            for (let k = position; k < position + tieGroup.length; k++) {
+              sumPositions += k;
+            }
+            let avgPosition = sumPositions / tieGroup.length;
+            tieGroup.forEach(candidate => {
+              candidate.position = avgPosition.toFixed(1);
+            });
+            finalResults.push(...tieGroup);
+            position += tieGroup.length;
+            i = j;
+          }
+
+          // Sort final results based on positions
+          finalResults.sort((a, b) => parseFloat(a.position) - parseFloat(b.position));
+
+          this.results = finalResults.map(candidate => ({
+            name: candidate.name,
+            totalScore: candidate.totalScore,
+            position: candidate.position
+          }));
+          this.winner = this.results[0].name;
+          this.saveData();
+        },
+        saveData() {
+          localStorage.setItem('candidates', JSON.stringify(this.candidates));
+        },
+        loadData() {
+          let savedCandidates = localStorage.getItem('candidates');
+          if (savedCandidates) {
+            this.candidates = JSON.parse(savedCandidates);
+          }
+        },
+        showRules() {
+          $('#rulesModal').modal('show');
+        },
+        closeRules() {
+          $('#rulesModal').modal('hide');
+        }
+      },
+      created() {
+        this.loadData();
+      }
+    });
+  </script>
+</body>
+</html>
