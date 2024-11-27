@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="UTF-8">
   <title>Zodiac Competitions Marking Tool</title>
@@ -13,22 +14,28 @@
       font-family: Arial, sans-serif;
       margin: 20px;
     }
+
     .candidate-list {
       max-height: 200px;
       overflow-y: auto;
     }
-    .results-table th, .results-table td {
+
+    .results-table th,
+    .results-table td {
       vertical-align: middle;
     }
+
     .modal-content {
       white-space: pre-wrap;
     }
+
     .delete-btn {
       cursor: pointer;
       color: red;
     }
   </style>
 </head>
+
 <body>
   <div id="app" class="container">
     <header class="my-4 text-center">
@@ -40,12 +47,14 @@
     <div class="candidate mb-4">
       <h2>Add Candidates</h2>
       <div class="form-inline">
-        <input v-model="newCandidate" @keyup.enter="addCandidate" class="form-control mr-2" placeholder="Enter candidate name" />
+        <input v-model="newCandidate" @keyup.enter="addCandidate" class="form-control mr-2"
+          placeholder="Enter candidate name" />
         <button @click="addCandidate" class="btn btn-primary">Add Candidate</button>
       </div>
       <div class="candidate-list mt-3">
         <ul class="list-group">
-          <li v-for="(candidate, index) in candidates" :key="index" class="list-group-item d-flex justify-content-between align-items-center">
+          <li v-for="(candidate, index) in candidates" :key="index"
+            class="list-group-item d-flex justify-content-between align-items-center">
             {{ candidate.name }}
             <span class="delete-btn" @click="deleteCandidate(index)">&times;</span>
           </li>
@@ -121,7 +130,8 @@
     </div>
 
     <!-- Rules Modal -->
-    <div class="modal fade" id="rulesModal" tabindex="-1" role="dialog" aria-labelledby="rulesModalLabel" aria-hidden="true">
+    <div class="modal fade" id="rulesModal" tabindex="-1" role="dialog" aria-labelledby="rulesModalLabel"
+      aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
           <div class="modal-header">
@@ -205,7 +215,7 @@ The PIC is responsible for the marking but should have a member helping who is a
             });
 
             // Sort candidates based on the judge's scores (descending)
-            judgeScores.sort((a, b) => a.score - b.score);
+            judgeScores.sort((a, b) => b.score - a.score);
 
             // Assign positions with tie handling
             let position = 1;
@@ -217,6 +227,7 @@ The PIC is responsible for the marking but should have a member helping who is a
                 tieGroup.push(judgeScores[jIndex]);
                 jIndex++;
               }
+              // Calculate average position for ties
               let sumPositions = 0;
               for (let k = position; k < position + tieGroup.length; k++) {
                 sumPositions += k;
@@ -230,22 +241,23 @@ The PIC is responsible for the marking but should have a member helping who is a
             }
           }
 
-          // Duplicate the magical judge's positional marks
+          // Sum the positional scores for each candidate, duplicating the magical judge's positional mark
           this.candidates.forEach(candidate => {
-            candidate.positionsDuplicated = [...candidate.positions];
-            candidate.positionsDuplicated.push(candidate.positions[this.magicalJudgeIndex]);
-          });
-
-          // Sum up the positional scores for each candidate
-          this.candidates.forEach(candidate => {
-            candidate.totalPositionalScore = candidate.positionsDuplicated.reduce((acc, val) => acc + val, 0);
+            candidate.totalPositionalScore = candidate.positions.reduce((acc, val, idx) => {
+              if (idx === this.magicalJudgeIndex) {
+                // Duplicate the magical judge's positional mark
+                return acc + val * 2;
+              } else {
+                return acc + val;
+              }
+            }, 0);
           });
 
           // Sort candidates based on total positional scores (ascending)
           let sortedCandidates = this.candidates.slice().sort((a, b) => a.totalPositionalScore - b.totalPositionalScore);
 
-          // Assign final positions with tie handling
-          let finalResults = [];
+          // Assign final positions, handling ties
+          let results = [];
           let position = 1;
           let i = 0;
           while (i < sortedCandidates.length) {
@@ -255,6 +267,7 @@ The PIC is responsible for the marking but should have a member helping who is a
               tieGroup.push(sortedCandidates[jIndex]);
               jIndex++;
             }
+            // Calculate average position for ties
             let sumPositions = 0;
             for (let k = position; k < position + tieGroup.length; k++) {
               sumPositions += k;
@@ -262,17 +275,17 @@ The PIC is responsible for the marking but should have a member helping who is a
             let avgPosition = sumPositions / tieGroup.length;
             tieGroup.forEach(candidate => {
               candidate.finalPosition = avgPosition;
-              finalResults.push(candidate);
+              results.push(candidate);
             });
             position += tieGroup.length;
             i = jIndex;
           }
 
           // Sort final results based on positions
-          finalResults.sort((a, b) => a.finalPosition - b.finalPosition);
+          results.sort((a, b) => a.finalPosition - b.finalPosition);
 
           // Update results
-          this.results = finalResults.map(candidate => ({
+          this.results = results.map(candidate => ({
             name: candidate.name,
             totalPositionalScore: candidate.totalPositionalScore,
             position: candidate.finalPosition
@@ -289,15 +302,15 @@ The PIC is responsible for the marking but should have a member helping who is a
         },
         getOrdinalSuffix(position) {
           let j = position % 10,
-              k = position % 100;
+            k = position % 100;
           if (j === 1 && k !== 11) {
-              return "st";
+            return "st";
           }
           if (j === 2 && k !== 12) {
-              return "nd";
+            return "nd";
           }
           if (j === 3 && k !== 13) {
-              return "rd";
+            return "rd";
           }
           return "th";
         },
@@ -323,4 +336,5 @@ The PIC is responsible for the marking but should have a member helping who is a
     });
   </script>
 </body>
+
 </html>
